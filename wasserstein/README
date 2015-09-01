@@ -1,0 +1,16 @@
+This is a program for computing Wasserstein distances between persistence diagrams
+using the geometric version of auction algorithm.
+
+Requires boost 1.58 or higher.
+After compilation with make an executable wasserstein appears in build/default.
+
+Usage:   wasserstein  file1 file2 [wasserstein_power] [relative_error]. 
+By default power is 1.0, relative error is 0.01.
+
+file1 and file2 must contain persistence diagrams in plain text format 
+(no headers, no comments, one point per line):
+
+x_1 y_1
+...
+x_n y_n
+
