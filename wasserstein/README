@@ -3,6 +3,8 @@ using the geometric version of auction algorithm.
 
 Requires boost 1.58 or higher.
 After compilation with make an executable wasserstein appears in build/default.
+(Alternatively, one can build the code using CMake:
+    mkdir build; cd build; cmake ..; make)
 
 Usage:   wasserstein  file1 file2 [wasserstein_power] [relative_error]. 
 By default power is 1.0, relative error is 0.01.
