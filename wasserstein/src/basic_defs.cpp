@@ -27,6 +27,7 @@ derivative works thereof, in binary and source code form.
 
 #include <algorithm>
 #include <cfloat>
+#include <set>
 #include "basic_defs.h"
 
 // Point
@@ -246,18 +247,19 @@ bool DiagramPointSet::hasElement(const DiagramPoint& p) const
 
 bool DiagramPointSet::operator==(const DiagramPointSet& other) const
 {
-  return this->points == other.points;
-  /* Alternative (does not work either for me)
-  for(auto it = this->cbegin();it!=this->cend();it++) {
-    if(! other.hasElement(*it)) {
-      return false;
-    }
-  }
-  for(auto it = other.cbegin();it!=other.cend();it++) {
-    if(! this->hasElement(*it)) {
-      return false;
-    }
-  }
-  return true;
-  */
+    if (size() != other.size())
+        return false;
+
+    std::set<DiagramPoint, DiagramPoint::LexicographicCmp>      dgm1(this->cbegin(), this->cend()),
+                                                                dgm2(other.cbegin(), other.cend());
+
+    for (auto& p : other.points)
+        if (dgm1.find(p) == dgm1.end())
+            return false;
+
+    for (auto& p : points)
+        if (dgm2.find(p) == dgm2.end())
+            return false;
+
+    return true;
 }

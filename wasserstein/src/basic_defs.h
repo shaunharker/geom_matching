@@ -78,6 +78,12 @@ struct DiagramPoint
     double getRealX() const; // return the x-coord
     double getRealY() const; // return the y-coord
     friend std::ostream& operator<<(std::ostream& output, const DiagramPoint p);
+
+    struct LexicographicCmp
+    {
+        bool    operator()(const DiagramPoint& p1, const DiagramPoint& p2) const
+        { return p1.type < p2.type || (p1.type == p2.type && (p1.x < p2.x || (p1.x == p2.x && p1.y < p2.y))); }
+    };
 };
 
 struct PointHash {
