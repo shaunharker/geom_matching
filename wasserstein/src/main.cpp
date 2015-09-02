@@ -96,11 +96,12 @@ int main(int argc, char* argv[])
     double wasserPower = (4 <= argc) ? atof(argv[3]) : 1.0;
     //default : 1% error
     double delta = (5 <= argc) ? atof(argv[4]) : 0.01;
-    double res = wassersteinDistSlow(A, B, wasserPower, delta);
     if ( delta <= 0.0) {
         std::cerr << "Relative error must be positive" << std::endl;
         return 0;
     }
+    double res = wassersteinDistSlow(A, B, wasserPower, delta);
+    
     std::cout << std::setprecision(15) << res << std::endl;
     return 0;
 }
