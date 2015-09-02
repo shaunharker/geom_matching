@@ -86,7 +86,7 @@ int main(int argc, char* argv[])
 {
     DiagramPointSet A, B;
     if (argc < 3 ) {
-        std::cerr << "Usage: " << argv[0] << "file1 file2 [wasserstein_power] [relative_error]. By default power is 1.0, relative error is 0.01" << std::endl;
+        std::cerr << "Usage: " << argv[0] << " file1 file2 [wasserstein_power] [relative_error]. By default power is 1.0, relative error is 0.01" << std::endl;
         return 1;
     }
     if (!readDiagramPointSets(argv[1], argv[2], A, B)) {
