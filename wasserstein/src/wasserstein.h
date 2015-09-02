@@ -31,6 +31,7 @@ derivative works thereof, in binary and source code form.
 
 #include <vector>
 #include <queue>
+#include <memory>
 #include <boost/heap/d_ary_heap.hpp>
 
 #include "basic_defs.h"
@@ -281,7 +282,7 @@ public:
     double wassersteinDistance;
     std::vector<IdxValPair> bidTable;
     // to get the 2 best items
-    AuctionOracle* oracle;
+    std::unique_ptr<AuctionOracle> oracle;
     std::list<size_t> unassignedBidders;
     std::vector< std::list<size_t>::iterator > unassignedBiddersIterators;
     std::vector< short > itemReceivedBidVec;
