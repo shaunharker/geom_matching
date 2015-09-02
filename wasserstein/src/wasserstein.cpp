@@ -83,7 +83,7 @@ AuctionRunner::AuctionRunner(DiagramPointSet& A, DiagramPointSet& B, const doubl
     for(const auto& pointB : B) {
         items.push_back(pointB);
     }
-    oracle = new AuctionOracle(bidders, items, wassersteinPower);
+    oracle = std::unique_ptr<AuctionOracle>(new AuctionOracle(bidders, items, wassersteinPower));
 }
 
 void AuctionRunner::assignGoodToBidder(IdxType itemIdx, IdxType bidderIdx)
