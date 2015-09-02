@@ -110,6 +110,7 @@ public:
     void clear();
     bool empty() const;
     bool hasElement(const DiagramPoint& p) const;
+    bool operator==(const DiagramPointSet& Other) const;
     std::unordered_set<DiagramPoint, DiagramPointHash>::iterator find(const DiagramPoint& p) { return points.find(p); };
     std::unordered_set<DiagramPoint, DiagramPointHash>::const_iterator find(const DiagramPoint& p) const { return points.find(p); };
     std::unordered_set<DiagramPoint, DiagramPointHash>::iterator begin() { return points.begin(); };

@@ -243,3 +243,21 @@ bool DiagramPointSet::hasElement(const DiagramPoint& p) const
 {
     return points.find(p) != points.end();
 }
+
+bool DiagramPointSet::operator==(const DiagramPointSet& other) const
+{
+  return this->points == other.points;
+  /* Alternative (does not work either for me)
+  for(auto it = this->cbegin();it!=this->cend();it++) {
+    if(! other.hasElement(*it)) {
+      return false;
+    }
+  }
+  for(auto it = other.cbegin();it!=other.cend();it++) {
+    if(! this->hasElement(*it)) {
+      return false;
+    }
+  }
+  return true;
+  */
+}
