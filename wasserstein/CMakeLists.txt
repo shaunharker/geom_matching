@@ -1,5 +1,5 @@
 project                     (wasserstein)
-cmake_minimum_required      (VERSION 2.8.11)
+cmake_minimum_required      (VERSION 2.8.9)
 
 # Default to Release
 if                          (NOT CMAKE_BUILD_TYPE)
