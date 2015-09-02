@@ -46,6 +46,9 @@ std::ostream& operator<< (std::ostream& output, const DebugOptimalBid& db)
 
 double wassersteinDistSlow(DiagramPointSet& A, DiagramPointSet& B, const double q, const double delta)
 {
+    if(A==B) {
+      return 0.0;
+    }
     if (q < 1) {
         std::cerr << "Wasserstein distance not defined for q = " << q << ", must be >= 1" << std::endl;
         throw "Bad q in Wasserstein";
