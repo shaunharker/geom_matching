@@ -100,7 +100,7 @@ int main(int argc, char* argv[])
         std::cerr << "Relative error must be positive" << std::endl;
         return 0;
     }
-    double res = wassersteinDistSlow(A, B, wasserPower, delta);
+    double res = wassersteinDist(A, B, wasserPower, delta);
     
     std::cout << std::setprecision(15) << res << std::endl;
     return 0;

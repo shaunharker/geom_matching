@@ -307,6 +307,6 @@ public:
 };
 
 // get Wasserstein distance between two persistence diagrams
-double wassersteinDistSlow(DiagramPointSet& A, DiagramPointSet& B, const double q, const double delta);
+double wassersteinDist(DiagramPointSet& A, DiagramPointSet& B, const double q, const double delta);
 
 #endif

@@ -44,7 +44,7 @@ std::ostream& operator<< (std::ostream& output, const DebugOptimalBid& db)
 }
 
 
-double wassersteinDistSlow(DiagramPointSet& A, DiagramPointSet& B, const double q, const double delta)
+double wassersteinDist(DiagramPointSet& A, DiagramPointSet& B, const double q, const double delta)
 {
     if(A==B) {
       return 0.0;
