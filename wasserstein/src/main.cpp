@@ -86,7 +86,7 @@ int main(int argc, char* argv[])
 {
     DiagramPointSet A, B;
     if (argc < 3 ) {
-        std::cerr << "Usage: " << argv[0] << " file1 file2 [wasserstein_power] [relative_error]. By default power is 1.0, relative error is 0.01" << std::endl;
+        std::cerr << "Usage: " << argv[0] << " file1 file2 [wasserstein_degree] [relative_error] [internal norm]. By default power is 1.0, relative error is 0.01, internal norm is l_infinity." << std::endl;
         return 1;
     }
     if (!readDiagramPointSets(argv[1], argv[2], A, B)) {
@@ -94,14 +94,26 @@ int main(int argc, char* argv[])
     }
 
     double wasserPower = (4 <= argc) ? atof(argv[3]) : 1.0;
-    //default : 1% error
+    if (wasserPower < 1.0) {
+        std::cerr << "The third argument (wasserstein_degree) was \"" << argv[3] << "\", must be a number >= 1.0. Cannot proceed. " << std::endl;
+        std::exit(1);
+    }
+
+    //default relative error:  1%
     double delta = (5 <= argc) ? atof(argv[4]) : 0.01;
     if ( delta <= 0.0) {
-        std::cerr << "Relative error must be positive" << std::endl;
-        return 0;
+        std::cerr << "The 4th argument (relative error) was \"" << argv[4] << "\", must be a number > 0.0. Cannot proceed. " << std::endl;
+        std::exit(1);
     }
-    double res = wassersteinDist(A, B, wasserPower, delta);
-    
+
+    // default for internal metric is l_infinity
+    double internal_p = ( 6 <= argc ) ? atof(argv[5]) : std::numeric_limits<double>::infinity();
+    if (internal_p < 1.0) {
+        std::cerr << "The 5th argument (internal norm) was \"" << argv[5] << "\", must be a number >= 1.0. Cannot proceed. " << std::endl;
+        std::exit(1);
+    }
+
+    double res = wassersteinDist(A, B, wasserPower, delta, internal_p);
     std::cout << std::setprecision(15) << res << std::endl;
     return 0;
 }

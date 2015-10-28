@@ -103,6 +103,7 @@ struct DiagramPointHash {
 double sqrDist(const Point& a, const Point& b);
 double dist(const Point& a, const Point& b);
 double distLInf(const DiagramPoint& a, const DiagramPoint& b);
+double distLp(const DiagramPoint& a, const DiagramPoint& b, const double p);
 
 typedef std::unordered_set<Point, PointHash> PointSet;
 

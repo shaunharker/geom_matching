@@ -145,14 +145,6 @@ search(PointHandle q, ResultsFunctor& rf) const
 
         HCIterator   m    = b + (e - b)/2;
         DistanceType dist = pow(traits().distance(q, *m), wassersteinPower) + weights_[m - tree_.begin()];
-        //std::cout << "Supplied to functor: m : ";
-        //std::cout << "(" << (*(*m))[0] << ", " << (*(*m))[1] << ")";
-        //std::cout << " and q : ";
-        //std::cout << "(" << (*q)[0] << ", " << (*q)[1] << ")" << std::endl;
-        //std::cout << "dist^q + weight = " << dist << std::endl;
-        //std::cout << "weight = " << weights_[m - tree_.begin()] << std::endl;
-        //std::cout << "dist = " << traits().distance(q, *m) << std::endl;
-        //std::cout << "dist^q = " << pow(traits().distance(q, *m), wassersteinPower) << std::endl;
 
 
         D = rf(*m, dist);

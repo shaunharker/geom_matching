@@ -44,7 +44,7 @@ std::ostream& operator<< (std::ostream& output, const DebugOptimalBid& db)
 }
 
 
-double wassersteinDist(DiagramPointSet& A, DiagramPointSet& B, const double q, const double delta)
+double wassersteinDist(DiagramPointSet& A, DiagramPointSet& B, const double q, const double delta, const double internal_p)
 {
     if(A==B) {
       return 0.0;
@@ -57,7 +57,7 @@ double wassersteinDist(DiagramPointSet& A, DiagramPointSet& B, const double q, c
         std::cerr << "Relative error  " << delta << ", must be > 0" << std::endl;
         throw "Bad delta in Wasserstein";
     }
-    AuctionRunner auction(A, B, q,  delta);
+    AuctionRunner auction(A, B, q,  delta, internal_p);
     return auction.getWassersteinDistance();
 }
 
@@ -65,7 +65,7 @@ double wassersteinDist(DiagramPointSet& A, DiagramPointSet& B, const double q, c
 // AuctionRunner 
 // *****************************
 
-AuctionRunner::AuctionRunner(DiagramPointSet& A, DiagramPointSet& B, const double q, const double _delta) :
+AuctionRunner::AuctionRunner(DiagramPointSet& A, DiagramPointSet& B, const double q, const double _delta, const double _internal_p) :
     numBidders(A.size()),
     numItems(A.size()),
     itemsToBidders(A.size(), -1),
@@ -73,7 +73,8 @@ AuctionRunner::AuctionRunner(DiagramPointSet& A, DiagramPointSet& B, const doubl
     wassersteinPower(q),
     bidTable(A.size(), std::make_pair(-1, std::numeric_limits<double>::lowest()) ),
     itemReceivedBidVec(B.size(), 0 ),
-    delta(_delta)
+    delta(_delta),
+    internal_p(_internal_p)
 {
     assert(A.size() == B.size());
     items.reserve(numBidders);
@@ -86,7 +87,7 @@ AuctionRunner::AuctionRunner(DiagramPointSet& A, DiagramPointSet& B, const doubl
     for(const auto& pointB : B) {
         items.push_back(pointB);
     }
-    oracle = std::unique_ptr<AuctionOracle>(new AuctionOracle(bidders, items, wassersteinPower));
+    oracle = std::unique_ptr<AuctionOracle>(new AuctionOracle(bidders, items, wassersteinPower, internal_p));
 }
 
 void AuctionRunner::assignGoodToBidder(IdxType itemIdx, IdxType bidderIdx)
@@ -343,7 +344,7 @@ double AuctionRunner::getDistanceToQthPowerInternal(void)
         auto pA = bidders[bIdx];
         assert( 0 <= biddersToItems[bIdx] and biddersToItems[bIdx] < items.size() );
         auto pB = items[biddersToItems[bIdx]];
-        result += pow(distLInf(pA, pB), wassersteinPower);
+        result += pow(distLp(pA, pB, internal_p), wassersteinPower);
     }
     wassersteinDistance = pow(result, 1.0 / wassersteinPower);
     return result;
@@ -423,7 +424,7 @@ void AuctionRunner::printMatching(void)
         if (biddersToItems[bIdx] >= 0) {
             auto pA = bidders[bIdx];
             auto pB = items[biddersToItems[bIdx]];
-            std::cout <<  pA << " <-> " << pB << "+" << pow(distLInf(pA, pB), wassersteinPower) << std::endl;
+            std::cout <<  pA << " <-> " << pB << "+" << pow(distLp(pA, pB, internal_p), wassersteinPower) << std::endl;
         } else {
             assert(false);
         }
@@ -432,17 +433,18 @@ void AuctionRunner::printMatching(void)
 }
 
 
-AuctionOracleAbstract::AuctionOracleAbstract(const std::vector<DiagramPoint>& _bidders, const std::vector<DiagramPoint>& _items, const double _wassersteinPower) :
+AuctionOracleAbstract::AuctionOracleAbstract(const std::vector<DiagramPoint>& _bidders, const std::vector<DiagramPoint>& _items, const double _wassersteinPower, const double _internal_p) :
     bidders(_bidders),
     items(_items),
     prices(items.size(), 0.0),
-    wassersteinPower(_wassersteinPower)
+    wassersteinPower(_wassersteinPower),
+    internal_p(_internal_p)
 {
 }
 
 double AuctionOracleAbstract::getValueForBidder(size_t bidderIdx, size_t itemIdx)
 {
-    return pow(distLInf(bidders[bidderIdx], items[itemIdx]), wassersteinPower) + prices[itemIdx];
+    return pow(distLp(bidders[bidderIdx], items[itemIdx], internal_p), wassersteinPower) + prices[itemIdx];
 }
 
 // *****************************
@@ -451,8 +453,9 @@ double AuctionOracleAbstract::getValueForBidder(size_t bidderIdx, size_t itemIdx
 
 AuctionOracleLazyHeap::AuctionOracleLazyHeap(const std::vector<DiagramPoint>& b, 
                                      const std::vector<DiagramPoint>& g, 
-                                     double _wassersteinPower) :
-    AuctionOracleAbstract(b, g, _wassersteinPower),
+                                     double _wassersteinPower,
+                                     const double internal_p) :
+    AuctionOracleAbstract(b, g, _wassersteinPower, internal_p),
     maxVal(std::numeric_limits<double>::min()),
     biddersUpdateMoments(b.size(), 0),
     updateCounter(0)
@@ -471,7 +474,7 @@ AuctionOracleLazyHeap::AuctionOracleLazyHeap(const std::vector<DiagramPoint>& b,
         weightVec.clear();
         weightVec.reserve(b.size());
         for(const auto& pointB : items) {
-            double val = weightAdjConst - pow(distLInf(pointA, pointB), wassersteinPower);
+            double val = weightAdjConst - pow(distLp(pointA, pointB, internal_p), wassersteinPower);
             weightVec.push_back( val );
             if ( val > maxVal )
                 maxVal = val;
@@ -601,7 +604,8 @@ IdxValPair AuctionOracleLazyHeap::getOptimalBid(const IdxType bidderIdx)
 
 AuctionOracleLazyHeapRestricted::AuctionOracleLazyHeapRestricted(const std::vector<DiagramPoint>& b, 
                                      const std::vector<DiagramPoint>& g, 
-                                     double _wassersteinPower) :
+                                     double _wassersteinPower,
+                                     double internal_p) :
     AuctionOracleAbstract(b, g, _wassersteinPower),
     maxVal(std::numeric_limits<double>::min()),
     biddersUpdateMoments(b.size(), 0),
@@ -624,7 +628,7 @@ AuctionOracleLazyHeapRestricted::AuctionOracleLazyHeapRestricted(const std::vect
         weightVec.clear();
         weightVec.reserve(b.size());
         for(const auto& pointB : items) {
-            double val = pow(distLInf(pointA, pointB), wassersteinPower);
+            double val = pow(distLp(pointA, pointB, internal_p), wassersteinPower);
             weightVec.push_back( val );
             if ( val > maxVal )
                 maxVal = val;
@@ -764,7 +768,7 @@ DebugOptimalBid AuctionOracleLazyHeapRestricted::getOptimalBidDebug(IdxType bidd
     assert(projItem.projId == bidder.id);
     assert(projItem.id == bidder.projId);
     // todo: store precomputed distance?
-    double projItemValue = pow(distLInf(bidder, projItem), wassersteinPower) + prices[projItemIdx];
+    double projItemValue = pow(distLp(bidder, projItem, internal_p), wassersteinPower) + prices[projItemIdx];
     candItems.push_back( std::make_pair(projItemIdx, projItemValue) );
  
     if (bidder.isNormal()) {
@@ -812,7 +816,7 @@ DebugOptimalBid AuctionOracleLazyHeapRestricted::getOptimalBidDebug(IdxType bidd
                 //bidders[bidderIdx].projId != items[itemIdx].id)
             //continue;
 
-        //currItemValue = pow(distLInf(bidders[bidderIdx], items[itemIdx]), wassersteinPower) + prices[itemIdx];
+        //currItemValue = pow(distLp(bidders[bidderIdx], items[itemIdx]), wassersteinPower) + prices[itemIdx];
         //if (currItemValue < debugNaiveResult.bestItemValue) {
             //debugNaiveResult.bestItemValue = currItemValue;
             //debugNaiveResult.bestItemIdx  = itemIdx;
@@ -827,7 +831,7 @@ DebugOptimalBid AuctionOracleLazyHeapRestricted::getOptimalBidDebug(IdxType bidd
                 //bidders[bidderIdx].projId != items[itemIdx].id)
             //continue;
 
-        //currItemValue = pow(distLInf(bidders[bidderIdx], items[itemIdx]), wassersteinPower) + prices[itemIdx];
+        //currItemValue = pow(distLp(bidders[bidderIdx], items[itemIdx]), wassersteinPower) + prices[itemIdx];
         //if (currItemValue < debugNaiveResult.secondBestItemValue) {
             //debugNaiveResult.secondBestItemValue = currItemValue;
             //debugNaiveResult.secondBestItemIdx = itemIdx;
@@ -847,7 +851,7 @@ DebugOptimalBid AuctionOracleLazyHeapRestricted::getOptimalBidDebug(IdxType bidd
         //auto pHeap = profitHeap[bidderIdx];
         //assert( pHeap != nullptr );
         //for(auto topIter = pHeap->ordered_begin(); topIter != pHeap->ordered_end(); ++topIter) {
-            //std::cerr << "in heap: " << topIter->first << ": " << topIter->second << "; real value = " << distLInf(bidder, items[topIter->first]) + prices[topIter->first] << std::endl;
+            //std::cerr << "in heap: " << topIter->first << ": " << topIter->second << "; real value = " << distLp(bidder, items[topIter->first]) + prices[topIter->first] << std::endl;
         //}
         //for(auto ci : candItems) {
             //std::cout << "ci.idx = " << ci.first << ", value = " << ci.second << std::endl;
@@ -879,7 +883,7 @@ IdxValPair AuctionOracleLazyHeapRestricted::getOptimalBid(const IdxType bidderId
     assert(projItem.projId == bidder.id);
     assert(projItem.id == bidder.projId);
     // todo: store precomputed distance?
-    double projItemValue = pow(distLInf(bidder, projItem), wassersteinPower) + prices[projItemIdx];
+    double projItemValue = pow(distLp(bidder, projItem, internal_p), wassersteinPower) + prices[projItemIdx];
    
     if (bidder.isDiagonal()) {
         // for diagonal bidder the only normal point has already been added
@@ -966,7 +970,7 @@ IdxValPair AuctionOracleLazyHeapRestricted::getOptimalBid(const IdxType bidderId
                 //bidders[bidderIdx].projId != items[itemIdx].id)
             //continue;
 
-        //currItemValue = pow(distLInf(bidders[bidderIdx], items[itemIdx]), wassersteinPower) + prices[itemIdx];
+        //currItemValue = pow(distLp(bidders[bidderIdx], items[itemIdx]), wassersteinPower) + prices[itemIdx];
         //if (currItemValue < debugNaiveResult.bestItemValue) {
             //debugNaiveResult.bestItemValue = currItemValue;
             //debugNaiveResult.bestItemIdx  = itemIdx;
@@ -981,7 +985,7 @@ IdxValPair AuctionOracleLazyHeapRestricted::getOptimalBid(const IdxType bidderId
                 //bidders[bidderIdx].projId != items[itemIdx].id)
             //continue;
 
-        //currItemValue = pow(distLInf(bidders[bidderIdx], items[itemIdx]), wassersteinPower) + prices[itemIdx];
+        //currItemValue = pow(distLp(bidders[bidderIdx], items[itemIdx]), wassersteinPower) + prices[itemIdx];
         //if (currItemValue < debugNaiveResult.secondBestItemValue) {
             //debugNaiveResult.secondBestItemValue = currItemValue;
             //debugNaiveResult.secondBestItemIdx = itemIdx;
@@ -1001,7 +1005,7 @@ IdxValPair AuctionOracleLazyHeapRestricted::getOptimalBid(const IdxType bidderId
         //auto pHeap = profitHeap[bidderIdx];
         //if ( pHeap != nullptr ) {
             //for(auto topIter = pHeap->ordered_begin(); topIter != pHeap->ordered_end(); ++topIter) {
-                //std::cerr << "in heap: " << topIter->first << ": " << topIter->second << "; real value = " << distLInf(bidder, items[topIter->first]) + prices[topIter->first] << std::endl;
+                //std::cerr << "in heap: " << topIter->first << ": " << topIter->second << "; real value = " << distLp(bidder, items[topIter->first]) + prices[topIter->first] << std::endl;
             //}
         //}
         ////for(auto ci : candItems) {
@@ -1024,8 +1028,9 @@ IdxValPair AuctionOracleLazyHeapRestricted::getOptimalBid(const IdxType bidderId
 
 AuctionOracleKDTree::AuctionOracleKDTree(const std::vector<DiagramPoint>& _bidders, 
         const std::vector<DiagramPoint>& _items, 
-        double _wassersteinPower) :
-    AuctionOracleAbstract(_bidders, _items, _wassersteinPower),
+        double _wassersteinPower,
+        double internal_p) :
+    AuctionOracleAbstract(_bidders, _items, _wassersteinPower, internal_p),
     heapHandlesIndices(items.size(), std::numeric_limits<size_t>::max()),
     kdtreeItems(items.size(), std::numeric_limits<size_t>::max())
 {
@@ -1053,6 +1058,7 @@ AuctionOracleKDTree::AuctionOracleKDTree(const std::vector<DiagramPoint>& _bidde
         dnnPointHandles.push_back(&dnnPoints[i]);
     }
     DnnTraits traits;
+    traits.internal_p = internal_p;
     //std::cout << "kdtree: " << dnnPointHandles.size() << " points" << std::endl;
     kdtree = new dnn::KDTree<DnnTraits>(traits, dnnPointHandles, wassersteinPower);
 
@@ -1129,7 +1135,7 @@ DebugOptimalBid AuctionOracleKDTree::getOptimalBidDebug(IdxType bidderIdx)
         candItems.push_back( std::make_pair(twoBestItems[1].p->id(), twoBestItems[1].d) );
         //size_t projItemIdx { biddersProjIndices.at(bidderIdx) };
         //assert(items[projItemIdx].projId == bidder.id);
-        //double projItemValue { pow(distLInf(bidder, items[projItemIdx]), wassersteinPower) + prices.at(projItemIdx) };
+        //double projItemValue { pow(distLp(bidder, items[projItemIdx]), wassersteinPower) + prices.at(projItemIdx) };
         //candItems.push_back( std::make_pair(projItemIdx, projItemValue) );
         assert(candItems.size() == 2);
         assert(candItems[1].second >= candItems[0].second);
@@ -1142,7 +1148,7 @@ DebugOptimalBid AuctionOracleKDTree::getOptimalBidDebug(IdxType bidderIdx)
     //std::cout << "got result: " << result << std::endl;
     //double bestItemsPrice = prices[bestItemIdx];
     //if (items[result.bestItemIdx].type == DiagramPoint::DIAG) {
-        //double bestItemValue1 = pow( distLInf(bidder, items[result.bestItemIdx]), q) + prices[result.bestItemIdx];
+        //double bestItemValue1 = pow( distLp(bidder, items[result.bestItemIdx]), q) + prices[result.bestItemIdx];
         //if ( fabs(result.bestItemValue - bestItemValue1) > 1e-6 ) {
             //std::cerr << "XXX: " << result.bestItemValue << " vs " << bestItemValue1 << std::endl;
             //result.bestItemValue = bestItemValue1;
@@ -1165,7 +1171,7 @@ DebugOptimalBid AuctionOracleKDTree::getOptimalBidDebug(IdxType bidderIdx)
                 //bidders[bidderIdx].projId != items[itemIdx].id)
             //continue;
 
-        currItemValue = pow(distLInf(bidders[bidderIdx], items[itemIdx]), wassersteinPower) + prices[itemIdx];
+        currItemValue = pow(distLp(bidders[bidderIdx], items[itemIdx]), wassersteinPower) + prices[itemIdx];
         if (currItemValue < debugNaiveResult.bestItemValue) {
             debugNaiveResult.bestItemValue = currItemValue;
             debugNaiveResult.bestItemIdx  = itemIdx;
@@ -1176,7 +1182,7 @@ DebugOptimalBid AuctionOracleKDTree::getOptimalBidDebug(IdxType bidderIdx)
         if (itemIdx == debugNaiveResult.bestItemIdx) {
             continue;
         }
-        currItemValue = pow(distLInf(bidders[bidderIdx], items[itemIdx]), wassersteinPower) + prices[itemIdx];
+        currItemValue = pow(distLp(bidders[bidderIdx], items[itemIdx]), wassersteinPower) + prices[itemIdx];
         if (currItemValue < debugNaiveResult.secondBestItemValue) {
             debugNaiveResult.secondBestItemValue = currItemValue;
             debugNaiveResult.secondBestItemIdx = itemIdx;
@@ -1263,8 +1269,9 @@ void AuctionOracleKDTree::setEpsilon(double newVal)
 // *****************************
 AuctionOracleRestricted::AuctionOracleRestricted(const std::vector<DiagramPoint>& b, 
                                          const std::vector<DiagramPoint>& g, 
-                                         double _wassersteinPower) :
-    AuctionOracleAbstract(b, g, _wassersteinPower),
+                                         double _wassersteinPower,
+                                         double internal_p) :
+    AuctionOracleAbstract(b, g, _wassersteinPower, internal_p),
     maxVal(0.0)
 {
     assert(b.size() == g.size() );
@@ -1276,7 +1283,7 @@ AuctionOracleRestricted::AuctionOracleRestricted(const std::vector<DiagramPoint>
         weightVec.clear();
         weightVec.reserve(b.size());
         for(const auto& pointB : items) {
-            double val = pow(distLInf(pointA, pointB), wassersteinPower);
+            double val = pow(distLp(pointA, pointB, internal_p), wassersteinPower);
             if (val > maxVal) {
                 maxVal = val;
             }
@@ -1360,8 +1367,9 @@ void AuctionOracleRestricted::setPrice(const IdxType itemIdx, const double newPr
 
 AuctionOracleKDTreeRestricted::AuctionOracleKDTreeRestricted(const std::vector<DiagramPoint>& _bidders, 
         const std::vector<DiagramPoint>& _items, 
-        double _wassersteinPower) :
-    AuctionOracleAbstract(_bidders, _items, _wassersteinPower),
+        const double _wassersteinPower,
+        const double internal_p) :
+    AuctionOracleAbstract(_bidders, _items, _wassersteinPower, internal_p),
     heapHandlesIndices(items.size(), std::numeric_limits<size_t>::max()),
     kdtreeItems(items.size(), std::numeric_limits<size_t>::max()),
     biddersToProjItems(bidders.size(), std::numeric_limits<size_t>::max()),
@@ -1440,7 +1448,7 @@ DebugOptimalBid AuctionOracleKDTreeRestricted::getOptimalBidDebug(IdxType bidder
     assert(projItem.projId == bidder.id);
     assert(projItem.id == bidder.projId);
     // todo: store precomputed distance?
-    double projItemValue = pow(distLInf(bidder, projItem), wassersteinPower) + prices[projItemIdx];
+    double projItemValue = pow(distLp(bidder, projItem, internal_p), wassersteinPower) + prices[projItemIdx];
    
     if (bidder.isDiagonal()) {
         // for diagonal bidder the only normal point has already been added
@@ -1509,7 +1517,7 @@ DebugOptimalBid AuctionOracleKDTreeRestricted::getOptimalBidDebug(IdxType bidder
     //std::cout << "got result: " << result << std::endl;
     //double bestItemsPrice = prices[bestItemIdx];
     //if (items[result.bestItemIdx].type == DiagramPoint::DIAG) {
-        //double bestItemValue1 = pow( distLInf(bidder, items[result.bestItemIdx]), wassersteinPower) + prices[result.bestItemIdx];
+        //double bestItemValue1 = pow( distLp(bidder, items[result.bestItemIdx]), wassersteinPower) + prices[result.bestItemIdx];
         //if ( fabs(result.bestItemValue - bestItemValue1) > 1e-6 ) {
             //std::cerr << "XXX: " << result.bestItemValue << " vs " << bestItemValue1 << std::endl;
             //result.bestItemValue = bestItemValue1;
@@ -1532,7 +1540,7 @@ DebugOptimalBid AuctionOracleKDTreeRestricted::getOptimalBidDebug(IdxType bidder
                 //bidders[bidderIdx].projId != items[itemIdx].id)
             //continue;
 
-        currItemValue = pow(distLInf(bidders[bidderIdx], items[itemIdx]), wassersteinPower) + prices[itemIdx];
+        currItemValue = pow(distLp(bidders[bidderIdx], items[itemIdx]), wassersteinPower) + prices[itemIdx];
         if (currItemValue < debugNaiveResult.bestItemValue) {
             debugNaiveResult.bestItemValue = currItemValue;
             debugNaiveResult.bestItemIdx  = itemIdx;
@@ -1543,7 +1551,7 @@ DebugOptimalBid AuctionOracleKDTreeRestricted::getOptimalBidDebug(IdxType bidder
         if (itemIdx == debugNaiveResult.bestItemIdx) {
             continue;
         }
-        currItemValue = pow(distLInf(bidders[bidderIdx], items[itemIdx]), wassersteinPower) + prices[itemIdx];
+        currItemValue = pow(distLp(bidders[bidderIdx], items[itemIdx]), wassersteinPower) + prices[itemIdx];
         if (currItemValue < debugNaiveResult.secondBestItemValue) {
             debugNaiveResult.secondBestItemValue = currItemValue;
             debugNaiveResult.secondBestItemIdx = itemIdx;
@@ -1597,7 +1605,7 @@ IdxValPair AuctionOracleKDTreeRestricted::getOptimalBid(IdxType bidderIdx)
     assert(projItem.projId == bidder.id);
     assert(projItem.id == bidder.projId);
     // todo: store precomputed distance?
-    double projItemValue = pow(distLInf(bidder, projItem), wassersteinPower) + prices[projItemIdx];
+    double projItemValue = pow(distLp(bidder, projItem, internal_p), wassersteinPower) + prices[projItemIdx];
    
     if (bidder.isDiagonal()) {
         // for diagonal bidder the only normal point has already been added

@@ -52,20 +52,38 @@ namespace dnn
             Real            norm2() const                               { Real n = 0; for (size_t i = 0; i < D; ++i) n += (*this)[i] * (*this)[i]; return n; }
             Real            max_norm() const
             {
-              //std::cout << "calculating norm of " << (*this)[0] << " " << (*this)[1] << std::endl;
-              Real m = std::fabs((*this)[0]);
-              for (size_t i = 1; i < D; ++i)
-                  if (std::fabs((*this)[i]) > m)
-                      m = std::fabs((*this)[i]);
-              //std::cout << "final result: " << m << std::endl;
-              return m; }
+                Real res = std::fabs((*this)[0]);
+                for (size_t i = 1; i < D; ++i)
+                    if (std::fabs((*this)[i]) > res)
+                        res = std::fabs((*this)[i]);
+                return res;
+            }
+
+            Real            l1_norm() const
+            {
+                Real res = std::fabs((*this)[0]);
+                for (size_t i = 1; i < D; ++i)
+                    res += std::fabs((*this)[i]);
+                return res;
+            }
+
+            Real            lp_norm(const Real p) const
+            {
+                assert( !std::isinf(p) );
+                if ( p == 1.0 )
+                    return l1_norm();
+                Real res = std::pow(std::fabs((*this)[0]), p);
+                for (size_t i = 1; i < D; ++i)
+                    res += std::pow(std::fabs((*this)[i]), p);
+                return std::pow(res, 1.0 / p);
+            }
 
             // quick and dirty for now; make generic later
             //DistanceType    distance(const Point& other) const          { return sqrt(sq_distance(other)); }
             //DistanceType    sq_distance(const Point& other) const       { return (other - *this).norm2(); }
 
             DistanceType    distance(const Point& other) const          { return (other - *this).max_norm(); }
-            DistanceType    sq_distance(const Point& other) const       { DistanceType d = distance(other); return d*d; }
+            DistanceType    p_distance(const Point& other, const double p) const          { return (other - *this).lp_norm(p); }
 
             size_t          id() const                                  { return id_; }
             size_t&         id()                                        { return id_; }
@@ -89,6 +107,7 @@ namespace dnn
     template<class Point>
     struct PointTraits;                         // intentionally undefined; should be specialized for each type
 
+    
     template<size_t D, typename Real>
     struct PointTraits< Point<D, Real> >        // specialization for dnn::Point
     {
@@ -99,15 +118,13 @@ namespace dnn
         typedef         typename PointType::Coordinate                      Coordinate;
         typedef         typename PointType::DistanceType                    DistanceType;
 
-        static DistanceType
-                        distance(const PointType& p1, const PointType& p2)  { return p1.distance(p2); }
-        static DistanceType
-                        distance(PointHandle p1, PointHandle p2)            { return distance(*p1,*p2); }
-        static DistanceType
-                        sq_distance(const PointType& p1,
-                                    const PointType& p2)                    { return p1.sq_distance(p2); }
-        static DistanceType
-                        sq_distance(PointHandle p1, PointHandle p2)         { return sq_distance(*p1,*p2); }
+
+        static DistanceType 
+            distance(const PointType& p1, const PointType& p2)              { if (std::isinf(internal_p)) return p1.distance(p2); else return p1.p_distance(p2, internal_p); }
+
+        static DistanceType 
+            distance(PointHandle p1, PointHandle p2)                        { return distance(*p1,*p2); } 
+
         static size_t   dimension()                                         { return D; }
         static Real     coordinate(const PointType& p, size_t i)            { return p[i]; }
         static Real&    coordinate(PointType& p, size_t i)                  { return p[i]; }
@@ -131,12 +148,23 @@ namespace dnn
         static typename PointContainer::const_iterator
                         iterator(const PointContainer& c, PointHandle ph)   { return c.begin() + (ph - &c[0]); }
 
+        // Internal_p determines which norm will be used in Wasserstein metric (not to
+        // be confused with wassersteinPower parameter:
+        // we raise \| p - q \|_{internal_p} to wassersteinPower.
+        static Real     internal_p;
+
         private:
+
             friend  class   boost::serialization::access;
 
             template<class Archive>
             void serialize(Archive& ar, const unsigned int version)         {}
-    };
+
+        };
+
+    template<size_t D, typename Real>
+    Real PointTraits< Point<D, Real> >::internal_p = std::numeric_limits<Real>::infinity();
+ 
 
     template<class PointContainer>
     void read_points(const std::string& filename, PointContainer& points)

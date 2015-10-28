@@ -94,6 +94,32 @@ double distLInf(const DiagramPoint& a, const DiagramPoint& b)
     }
 }
 
+double distLp(const DiagramPoint& a, const DiagramPoint& b, const double p)
+{
+    // infinity: special case
+    if ( std::isinf(p) )
+        return distLInf(a, b);
+
+    // check p
+    assert( p >= 1.0 );
+
+    // avoid calling pow function
+    if ( p == 1.0 ) {
+        if ( a.isNormal() or b.isNormal() ) {
+            // distance between normal points is a usual l-inf distance
+            return fabs(a.getRealX() - b.getRealX()) + fabs(a.getRealY() - b.getRealY());
+        } else 
+            return 0.0;
+    } 
+
+    if ( a.isNormal() or b.isNormal() ) {
+        // distance between normal points is a usual l-inf distance
+        return std::pow(std::pow(fabs(a.getRealX() - b.getRealX()), p) + std::pow(fabs(a.getRealY() - b.getRealY()), p), 1.0/p );
+    } else 
+        return 0.0;
+}
+
+
 bool DiagramPoint::operator==(const DiagramPoint& other) const
 {
     assert(this->id >= MIN_VALID_ID);

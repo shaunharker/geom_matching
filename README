@@ -6,8 +6,7 @@ After compilation with make an executable wasserstein appears in build/default.
 (Alternatively, one can build the code using CMake:
     mkdir build; cd build; cmake ..; make)
 
-Usage:   wasserstein  file1 file2 [wasserstein_power] [relative_error]. 
-By default power is 1.0, relative error is 0.01.
+Usage:   wasserstein  file1 file2 [wasserstein_degree] [relative_error] [internal_p]
 
 file1 and file2 must contain persistence diagrams in plain text format 
 (no headers, no comments, one point per line):
@@ -16,3 +15,22 @@ x_1 y_1
 ...
 x_n y_n
 
+Wasserstein distance $W_{q, p}(X, Y)$ between two persistent diagrams is
+the minimum over all perfect matchings between $X$ and $Y$ ( $y(x)$ is the point of $Y$
+matched to $x \in X$ ) of the following expression:
+$ ( \sum \| x - y(x) \|_p ^ { q } ) ^ { 1 / q} $
+
+Parameter wasserstein_degree corresponds to $q$, when it tends to infinity,
+Wasserstein distance tends to the bottleneck distance.
+
+Parameter internal_p corresponds to p.
+
+Default values: 
+wasserstein_degree  = 1.0, 
+relative_error = 0.01, 
+internal_p = infinity.
+
+Valid values: 
+wasserstein_degree must be in $[1.0, \infinity)$, 
+relative_error must be positive,
+internal_p must be in $[1.0, \infinity]$ (to explicitly set internal_p to $\infinity$, supply inf).

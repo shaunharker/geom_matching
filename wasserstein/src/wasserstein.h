@@ -77,7 +77,7 @@ struct DebugOptimalBid {
 };
 
 struct AuctionOracleAbstract {
-    AuctionOracleAbstract(const std::vector<DiagramPoint>& _bidders, const std::vector<DiagramPoint>& _items, const double _wassersteinPower);
+    AuctionOracleAbstract(const std::vector<DiagramPoint>& _bidders, const std::vector<DiagramPoint>& _items, const double _wassersteinPower, const double _internal_p = std::numeric_limits<double>::infinity());
     ~AuctionOracleAbstract() {}
     virtual IdxValPair getOptimalBid(const IdxType bidderIdx) = 0;
     virtual void setPrice(const IdxType itemsIdx, const double newPrice) = 0;
@@ -90,12 +90,13 @@ protected:
     std::vector<double> prices;
     double wassersteinPower;
     double epsilon;
+    double internal_p;
     double getValueForBidder(size_t bidderIdx, size_t itemsIdx);
 };
 
 struct AuctionOracleLazyHeap final : AuctionOracleAbstract {
     using AuctionHeap = boost::heap::d_ary_heap<IdxValPair, boost::heap::arity<2>, boost::heap::mutable_<true>, boost::heap::compare<CompPairsBySecondStruct>>;
-    AuctionOracleLazyHeap(const std::vector<DiagramPoint>& bidders, const std::vector<DiagramPoint>& items, const double wassersteinPower);
+    AuctionOracleLazyHeap(const std::vector<DiagramPoint>& bidders, const std::vector<DiagramPoint>& items, const double wassersteinPower, const double _internal_p = std::numeric_limits<double>::infinity());
     ~AuctionOracleLazyHeap();
     // data members
     // temporarily make everything public
@@ -127,7 +128,7 @@ struct AuctionOracleLazyHeapRestricted final : AuctionOracleAbstract {
                                                    boost::heap::arity<2>,
                                                    boost::heap::mutable_<true>,
                                                    boost::heap::compare<CompPairsBySecondGreaterStruct>>;
-     AuctionOracleLazyHeapRestricted(const std::vector<DiagramPoint>& bidders, const std::vector<DiagramPoint>& items, const double wassersteinPower);
+     AuctionOracleLazyHeapRestricted(const std::vector<DiagramPoint>& bidders, const std::vector<DiagramPoint>& items, const double wassersteinPower, const double _internal_p = std::numeric_limits<double>::infinity());
     ~AuctionOracleLazyHeapRestricted();
     // data members
     // temporarily make everything public
@@ -175,7 +176,7 @@ struct AuctionOracleKDTree final : AuctionOracleAbstract {
                                                    boost::heap::mutable_<true>,
                                                    boost::heap::compare<CompPairsBySecondGreaterStruct>>;
     
-    AuctionOracleKDTree(const std::vector<DiagramPoint>& bidders, const std::vector<DiagramPoint>& items, const double wassersteinPower);
+    AuctionOracleKDTree(const std::vector<DiagramPoint>& bidders, const std::vector<DiagramPoint>& items, const double wassersteinPower, const double _internal_p = std::numeric_limits<double>::infinity());
     ~AuctionOracleKDTree();
     // data members
     // temporarily make everything public
@@ -209,7 +210,7 @@ struct AuctionOracleKDTreeRestricted final : AuctionOracleAbstract {
                                                    boost::heap::mutable_<true>,
                                                    boost::heap::compare<CompPairsBySecondGreaterStruct>>;
     
-    AuctionOracleKDTreeRestricted(const std::vector<DiagramPoint>& bidders, const std::vector<DiagramPoint>& items, const double wassersteinPower);
+    AuctionOracleKDTreeRestricted(const std::vector<DiagramPoint>& bidders, const std::vector<DiagramPoint>& items, const double wassersteinPower, const double _internal_p = std::numeric_limits<double>::infinity());
     ~AuctionOracleKDTreeRestricted();
     // data members
     // temporarily make everything public
@@ -242,7 +243,7 @@ struct AuctionOracleKDTreeRestricted final : AuctionOracleAbstract {
 };
 
 struct AuctionOracleRestricted final : AuctionOracleAbstract {
-    AuctionOracleRestricted(const std::vector<DiagramPoint>& bidders, const std::vector<DiagramPoint>& items, const double wassersteinPower);
+    AuctionOracleRestricted(const std::vector<DiagramPoint>& bidders, const std::vector<DiagramPoint>& items, const double wassersteinPower, const double _internal_p = std::numeric_limits<double>::infinity());
     IdxValPair getOptimalBid(const IdxType bidderIdx) override;
     void setPrice(const IdxType itemsIdx, const double newPrice) override;
     void adjustPrices(void) override {};
@@ -263,7 +264,7 @@ using AuctionOracle = AuctionOracleKDTreeRestricted;
 
 class AuctionRunner {
 public:
-    AuctionRunner(DiagramPointSet& A, DiagramPointSet& B, const double q,  const double _delta);
+    AuctionRunner(DiagramPointSet& A, DiagramPointSet& B, const double q,  const double _delta, const double _internal_p);
     void setEpsilon(double newVal) { assert(epsilon > 0.0); epsilon = newVal; };
     double getEpsilon(void) const { return epsilon; }
     double getWassersteinDistance(void);
@@ -278,6 +279,7 @@ public:
     std::vector<DiagramPoint> bidders, items;
     double epsilon;
     double delta;
+    double internal_p;
     double weightAdjConst;
     double wassersteinDistance;
     std::vector<IdxValPair> bidTable;
@@ -307,6 +309,6 @@ public:
 };
 
 // get Wasserstein distance between two persistence diagrams
-double wassersteinDist(DiagramPointSet& A, DiagramPointSet& B, const double q, const double delta);
+double wassersteinDist(DiagramPointSet& A, DiagramPointSet& B, const double q, const double delta, const double _internal_p = std::numeric_limits<double>::infinity());
 
 #endif
