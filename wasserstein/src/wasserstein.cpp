@@ -71,10 +71,10 @@ AuctionRunner::AuctionRunner(DiagramPointSet& A, DiagramPointSet& B, const doubl
     itemsToBidders(A.size(), -1),
     biddersToItems(A.size(), -1),
     wassersteinPower(q),
-    bidTable(A.size(), std::make_pair(-1, std::numeric_limits<double>::lowest()) ),
-    itemReceivedBidVec(B.size(), 0 ),
     delta(_delta),
-    internal_p(_internal_p)
+    internal_p(_internal_p),
+    bidTable(A.size(), std::make_pair(-1, std::numeric_limits<double>::lowest()) ),
+    itemReceivedBidVec(B.size(), 0 )
 {
     assert(A.size() == B.size());
     items.reserve(numBidders);
@@ -257,7 +257,7 @@ void AuctionRunner::runAuction(void)
 void AuctionRunner::runAuctionPhase(void)
 {
     //std::cout << "Entered runAuctionPhase" << std::endl;
-    int numUnassignedBidders { 0 };
+    //int numUnassignedBidders { 0 };
 
     // at the beginning of a phase all bidders are unassigned
     unassignedBidders.clear();
