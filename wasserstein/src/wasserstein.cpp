@@ -34,6 +34,8 @@ derivative works thereof, in binary and source code form.
 #include "def_debug.h"
 #include "wasserstein.h"
 
+namespace geom_ws {
+
 std::ostream& operator<< (std::ostream& output, const DebugOptimalBid& db)
 {
     std::cout << "bestItemValue = " << db.bestItemValue;
@@ -44,11 +46,12 @@ std::ostream& operator<< (std::ostream& output, const DebugOptimalBid& db)
 }
 
 
-double wassersteinDist(DiagramPointSet& A, DiagramPointSet& B, const double q, const double delta, const double internal_p)
+double wassersteinDistVec(const std::vector<DiagramPoint>& A, 
+                          const std::vector<DiagramPoint>& B, 
+                          const double q, 
+                          const double delta,
+                          const double _internal_p)
 {
-    if(A==B) {
-      return 0.0;
-    }
     if (q < 1) {
         std::cerr << "Wasserstein distance not defined for q = " << q << ", must be >= 1" << std::endl;
         throw "Bad q in Wasserstein";
@@ -57,7 +60,7 @@ double wassersteinDist(DiagramPointSet& A, DiagramPointSet& B, const double q, c
         std::cerr << "Relative error  " << delta << ", must be > 0" << std::endl;
         throw "Bad delta in Wasserstein";
     }
-    AuctionRunner auction(A, B, q,  delta, internal_p);
+    AuctionRunner auction(A, B, q,  delta, _internal_p);
     return auction.getWassersteinDistance();
 }
 
@@ -65,7 +68,9 @@ double wassersteinDist(DiagramPointSet& A, DiagramPointSet& B, const double q, c
 // AuctionRunner 
 // *****************************
 
-AuctionRunner::AuctionRunner(DiagramPointSet& A, DiagramPointSet& B, const double q, const double _delta, const double _internal_p) :
+AuctionRunner::AuctionRunner(const std::vector<DiagramPoint>& A, const std::vector<DiagramPoint>& B, const double q, const double _delta, const double _internal_p) :
+    bidders(A),
+    items(B),
     numBidders(A.size()),
     numItems(A.size()),
     itemsToBidders(A.size(), -1),
@@ -77,16 +82,6 @@ AuctionRunner::AuctionRunner(DiagramPointSet& A, DiagramPointSet& B, const doubl
     itemReceivedBidVec(B.size(), 0 )
 {
     assert(A.size() == B.size());
-    items.reserve(numBidders);
-    bidders.reserve(numItems);
-    IdxType idx { 0 };
-    for(const auto& pointA : A) {
-        bidders.push_back(pointA);
-        allIndices.push_back(idx++);
-    }
-    for(const auto& pointB : B) {
-        items.push_back(pointB);
-    }
     oracle = std::unique_ptr<AuctionOracle>(new AuctionOracle(bidders, items, wassersteinPower, internal_p));
 }
 
@@ -262,7 +257,7 @@ void AuctionRunner::runAuctionPhase(void)
     // at the beginning of a phase all bidders are unassigned
     unassignedBidders.clear();
     unassignedBiddersIterators.clear();
-    for(size_t bidderIdx = 0; bidderIdx < allIndices.size(); ++bidderIdx) {
+    for(size_t bidderIdx = 0; bidderIdx < numBidders; ++bidderIdx) {
         unassignedBidders.push_back(bidderIdx);
         unassignedBiddersIterators.push_back( std::prev( unassignedBidders.end() ));
     }
@@ -610,7 +605,6 @@ AuctionOracleLazyHeapRestricted::AuctionOracleLazyHeapRestricted(const std::vect
     maxVal(std::numeric_limits<double>::min()),
     biddersUpdateMoments(b.size(), 0),
     updateCounter(0),
-    biddersToProjItems(bidders.size(), std::numeric_limits<size_t>::max()),
     heapHandlesIndices(items.size(), std::numeric_limits<size_t>::max()),
     bestDiagonalItemsComputed(false)
 {
@@ -652,17 +646,6 @@ AuctionOracleLazyHeapRestricted::AuctionOracleLazyHeapRestricted(const std::vect
         }
     }
      // todo: this must be done in readFiles procedure
-    //std::cout << "started wasting time..." << std::endl;
-    for(size_t bidderIdx = 0; bidderIdx < bidders.size(); ++bidderIdx) {
-        for(size_t itemIdx = 0; itemIdx < items.size(); ++itemIdx) {
-            auto bidder = bidders[bidderIdx];
-            auto item = items[itemIdx];
-            if (bidder.id == item.projId) {
-                biddersToProjItems[bidderIdx] = itemIdx;
-            }
-        }
-    }
-    //std::cout << "stopped wasting time." << std::endl;
 }
 
 void AuctionOracleLazyHeapRestricted::updateQueueForBidder(IdxType bidderIdx)
@@ -761,12 +744,12 @@ DebugOptimalBid AuctionOracleLazyHeapRestricted::getOptimalBidDebug(IdxType bidd
     std::vector<IdxValPair> candItems;
     // corresponding point is always considered as a candidate
 
-    size_t projItemIdx = biddersToProjItems[bidderIdx];
+    size_t projItemIdx = bidderIdx;
     assert( 0 <= projItemIdx and projItemIdx < items.size() );
     DiagramPoint projItem = items[projItemIdx];
     assert(projItem.type != bidder.type);
-    assert(projItem.projId == bidder.id);
-    assert(projItem.id == bidder.projId);
+    //assert(projItem.projId == bidder.id);
+    //assert(projItem.id == bidder.projId);
     // todo: store precomputed distance?
     double projItemValue = pow(distLp(bidder, projItem, internal_p), wassersteinPower) + prices[projItemIdx];
     candItems.push_back( std::make_pair(projItemIdx, projItemValue) );
@@ -876,12 +859,12 @@ IdxValPair AuctionOracleLazyHeapRestricted::getOptimalBid(const IdxType bidderId
     double secondBestItemValue;
 
     auto& bidder = bidders[bidderIdx];
-    IdxType projItemIdx = biddersToProjItems[bidderIdx];
+    IdxType projItemIdx = bidderIdx;
     assert( 0 <= projItemIdx and projItemIdx < items.size() );
     DiagramPoint projItem = items[projItemIdx];
     assert(projItem.type != bidder.type);
-    assert(projItem.projId == bidder.id);
-    assert(projItem.id == bidder.projId);
+    //assert(projItem.projId == bidder.id);
+    //assert(projItem.id == bidder.projId);
     // todo: store precomputed distance?
     double projItemValue = pow(distLp(bidder, projItem, internal_p), wassersteinPower) + prices[projItemIdx];
    
@@ -1044,8 +1027,8 @@ AuctionOracleKDTree::AuctionOracleKDTree(const std::vector<DiagramPoint>& _bidde
             kdtreeItems[trueIdx] = dnnItemIdx;
             // index of items is id of dnn-point
             DnnPoint p(trueIdx);
-            p[0] = g.x;
-            p[1] = g.y;
+            p[0] = g.getRealX();
+            p[1] = g.getRealY();
             dnnPoints.push_back(p);
             assert(dnnItemIdx == dnnPoints.size() - 1);
             dnnItemIdx++;
@@ -1310,7 +1293,7 @@ IdxValPair AuctionOracleRestricted::getOptimalBid(const IdxType bidderIdx)
         // non-diagonal point or to its own projection
         if (isRestricted and bidder.isNormal() ) {
             auto item = items[itemIdx];
-            if (item.isDiagonal() and item.projId != bidder.id)
+            if (item.isDiagonal() and itemIdx != bidderIdx)
                 continue;
         }
         auto currItemValue = weightMatrix[bidderIdx][itemIdx] + prices[itemIdx];
@@ -1327,7 +1310,7 @@ IdxValPair AuctionOracleRestricted::getOptimalBid(const IdxType bidderIdx)
         // non-diagonal point or to its own projection
         if (isRestricted and bidder.isNormal() ) {
             auto itemsItem = items[itemIdx];
-            if (DiagramPoint::DIAG == itemsItem.type and itemsItem.projId != bidder.id)
+            if (DiagramPoint::DIAG == itemsItem.type and itemIdx != bidderIdx)
                 continue;
         }
 
@@ -1372,7 +1355,6 @@ AuctionOracleKDTreeRestricted::AuctionOracleKDTreeRestricted(const std::vector<D
     AuctionOracleAbstract(_bidders, _items, _wassersteinPower, internal_p),
     heapHandlesIndices(items.size(), std::numeric_limits<size_t>::max()),
     kdtreeItems(items.size(), std::numeric_limits<size_t>::max()),
-    biddersToProjItems(bidders.size(), std::numeric_limits<size_t>::max()),
     bestDiagonalItemsComputed(false)
 {
     size_t dnnItemIdx { 0 };
@@ -1384,8 +1366,8 @@ AuctionOracleKDTreeRestricted::AuctionOracleKDTreeRestricted(const std::vector<D
             kdtreeItems[trueIdx] = dnnItemIdx;
             // index of items is id of dnn-point
             DnnPoint p(trueIdx);
-            p[0] = g.x;
-            p[1] = g.y;
+            p[0] = g.getRealX();
+            p[1] = g.getRealY();
             dnnPoints.push_back(p);
             assert(dnnItemIdx == dnnPoints.size() - 1);
             dnnItemIdx++;
@@ -1415,18 +1397,6 @@ AuctionOracleKDTreeRestricted::AuctionOracleKDTreeRestricted(const std::vector<D
     weightAdjConst = maxVal;
     //std::cout << "AuctionOracleKDTreeRestricted: weightAdjConst = " << weightAdjConst << std::endl;
     //std::cout << "AuctionOracleKDTreeRestricted constructor done" << std::endl;
-    // todo: this must be done in readFiles procedure
-    //std::cout << "started wasting time..." << std::endl;
-    for(size_t bidderIdx = 0; bidderIdx < bidders.size(); ++bidderIdx) {
-        for(size_t itemIdx = 0; itemIdx < items.size(); ++itemIdx) {
-            auto bidder = bidders[bidderIdx];
-            auto item = items[itemIdx];
-            if (bidder.id == item.projId) {
-                biddersToProjItems[bidderIdx] = itemIdx;
-            }
-        }
-    }
-    //std::cout << "stopped wasting time." << std::endl;
 }
 
 DebugOptimalBid AuctionOracleKDTreeRestricted::getOptimalBidDebug(IdxType bidderIdx)
@@ -1441,12 +1411,12 @@ DebugOptimalBid AuctionOracleKDTreeRestricted::getOptimalBidDebug(IdxType bidder
     // if bidder is a diagonal point, projItem is a normal point, 
     // and vice versa.
 
-    size_t projItemIdx = biddersToProjItems[bidderIdx];
+    size_t projItemIdx = bidderIdx;
     assert( 0 <= projItemIdx and projItemIdx < items.size() );
     DiagramPoint projItem = items[projItemIdx];
     assert(projItem.type != bidder.type);
-    assert(projItem.projId == bidder.id);
-    assert(projItem.id == bidder.projId);
+    //assert(projItem.projId == bidder.id);
+    //assert(projItem.id == bidder.projId);
     // todo: store precomputed distance?
     double projItemValue = pow(distLp(bidder, projItem, internal_p), wassersteinPower) + prices[projItemIdx];
    
@@ -1598,12 +1568,12 @@ IdxValPair AuctionOracleKDTreeRestricted::getOptimalBid(IdxType bidderIdx)
     double secondBestItemValue;
 
 
-    size_t projItemIdx = biddersToProjItems[bidderIdx];
+    size_t projItemIdx = bidderIdx;
     assert( 0 <= projItemIdx and projItemIdx < items.size() );
     DiagramPoint projItem = items[projItemIdx];
     assert(projItem.type != bidder.type);
-    assert(projItem.projId == bidder.id);
-    assert(projItem.id == bidder.projId);
+    //assert(projItem.projId == bidder.id);
+    //assert(projItem.id == bidder.projId);
     // todo: store precomputed distance?
     double projItemValue = pow(distLp(bidder, projItem, internal_p), wassersteinPower) + prices[projItemIdx];
    
@@ -1710,3 +1680,5 @@ void AuctionOracleKDTreeRestricted::setEpsilon(double newVal)
     assert(newVal >= 0.0);
     epsilon = newVal;
 }
+
+} // end of namespace geom_ws

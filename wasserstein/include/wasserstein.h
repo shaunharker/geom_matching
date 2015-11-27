@@ -30,6 +30,7 @@ derivative works thereof, in binary and source code form.
 #define WASSERSTEIN_H
 
 #include <vector>
+#include <map>
 #include <queue>
 #include <memory>
 #include <boost/heap/d_ary_heap.hpp>
@@ -39,8 +40,63 @@ derivative works thereof, in binary and source code form.
 #include <dnn/geometry/euclidean-fixed.h>
 #include <dnn/local/kd-tree.h>
 
-using IdxType = int;
-using IdxValPair = std::pair<IdxType, double>;
+namespace geom_ws {
+
+// get Wasserstein distance between two persistence diagrams
+double wassersteinDistVec(const std::vector<DiagramPoint>& A, 
+                          const std::vector<DiagramPoint>& B, 
+                          const double q, 
+                          const double delta,
+                          const double _internal_p = std::numeric_limits<double>::infinity());
+
+
+// compare as multisets
+template<class PairContainer>
+bool areEqual(PairContainer& dgm1, PairContainer& dgm2)
+{
+    if (dgm1.size() != dgm2.size()) {
+        return false;
+    }
+
+    std::map<std::pair<double, double>, int> m1, m2;
+
+    for(const auto& pair1 : dgm1) {
+        m1[pair1]++;
+    }
+
+    for(const auto& pair2 : dgm2) {
+        m2[pair2]++;
+    }
+
+    return m1 == m2;
+}
+
+template<class PairContainer>
+double wassersteinDist(PairContainer& A, PairContainer& B, const double q, const double delta, const double _internal_p = std::numeric_limits<double>::infinity())
+{
+    if (areEqual(A, B)) {
+        return 0.0;
+    }
+
+    std::vector<DiagramPoint> dgmA, dgmB;
+    // loop over A, add projections of A-points to corresponding positions
+    // in B-vector
+    for(auto& pairA : A) {
+        double x = pairA.first;
+        double y = pairA.second;
+        dgmA.push_back(DiagramPoint(x, y,  DiagramPoint::NORMAL));
+        dgmB.push_back(DiagramPoint(x, y,  DiagramPoint::DIAG));
+    }
+    // the same for B
+    for(auto& pairB : B) {
+        double x = pairB.first;
+        double y = pairB.second;
+        dgmA.push_back(DiagramPoint(x, y,  DiagramPoint::DIAG));
+        dgmB.push_back(DiagramPoint(x, y,  DiagramPoint::NORMAL));
+    }
+    
+    return wassersteinDistVec(dgmA, dgmB, q, delta, _internal_p);
+}
 
 struct CompPairsBySecondStruct {
     bool operator()(const IdxValPair& a, const IdxValPair& b) const
@@ -150,7 +206,6 @@ struct AuctionOracleLazyHeapRestricted final : AuctionOracleAbstract {
     UpdateList updateList;
     std::vector<int> biddersUpdateMoments;
     int updateCounter;
-    std::vector<size_t> biddersToProjItems;
     void updateQueueForBidder(const IdxType bidderIdx);
     DiagPricesHeap diagItemsHeap;
     std::vector<DiagPricesHeap::handle_type> diagHeapHandles;
@@ -225,7 +280,6 @@ struct AuctionOracleKDTreeRestricted final : AuctionOracleAbstract {
     std::vector<DiagPricesHeap::handle_type> diagHeapHandles;
     std::vector<size_t> heapHandlesIndices;
     std::vector<size_t> kdtreeItems;
-    std::vector<size_t> biddersToProjItems;
     // vector of heaps to find the best items
     void setPrice(const IdxType itemsIdx, const double newPrice) override final;
     IdxValPair getOptimalBid(const IdxType bidderIdx) override final;
@@ -264,19 +318,20 @@ using AuctionOracle = AuctionOracleKDTreeRestricted;
 
 class AuctionRunner {
 public:
-    AuctionRunner(DiagramPointSet& A, DiagramPointSet& B, const double q,  const double _delta, const double _internal_p);
+    AuctionRunner(const std::vector<DiagramPoint>& A, const std::vector<DiagramPoint>& B, const double q,  const double _delta, const double _internal_p);
     void setEpsilon(double newVal) { assert(epsilon > 0.0); epsilon = newVal; };
     double getEpsilon(void) const { return epsilon; }
     double getWassersteinDistance(void);
+    static constexpr double epsilonCommonRatio { 5 }; // next epsilon = current epsilon / epsilonCommonRatio
+    static constexpr int maxIterNum { 25 };
 //private:
     // private data
+    std::vector<DiagramPoint> bidders, items;
     const size_t numBidders;
     const size_t numItems;
-    std::vector<IdxType> allIndices;
     std::vector<IdxType> itemsToBidders;
     std::vector<IdxType> biddersToItems;
     double wassersteinPower;
-    std::vector<DiagramPoint> bidders, items;
     double epsilon;
     double delta;
     double internal_p;
@@ -304,11 +359,8 @@ public:
     int countUnhappy(void);
     void printMatching(void);
     double getDistanceToQthPowerInternal(void);
-    static constexpr double epsilonCommonRatio { 5 }; // next epsilon = current epsilon / epsilonCommonRatio
-    static constexpr int maxIterNum { 25 };
 };
 
-// get Wasserstein distance between two persistence diagrams
-double wassersteinDist(DiagramPointSet& A, DiagramPointSet& B, const double q, const double delta, const double _internal_p = std::numeric_limits<double>::infinity());
+} // end of namespace geom_ws
 
 #endif

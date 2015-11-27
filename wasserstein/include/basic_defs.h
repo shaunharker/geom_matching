@@ -41,6 +41,12 @@ derivative works thereof, in binary and source code form.
 
 #define MIN_VALID_ID 10
 
+namespace geom_ws {
+
+using IdxType = int;
+using IdxValPair = std::pair<IdxType, double>;
+
+
 struct Point {
     double x, y;
     bool operator==(const Point& other) const;
@@ -58,23 +64,10 @@ struct DiagramPoint
     // to-do: add getters/setters, checks in constructors, etc
     enum Type { NORMAL, DIAG};
     // data members
-    double x, y;
     Type type;
-    size_t id;
-    // for diagonal points projId is the id of the normal point whose
-    // projection they are
-    // for normal points projId is the id of the projection 
-    size_t projId;
-    // operators, constructors
-    bool operator==(const DiagramPoint& other) const;
-    bool operator!=(const DiagramPoint& other) const;
-    DiagramPoint(double xx, double yy, Type ttype, size_t uid, size_t projId);
-    DiagramPoint(double xx, double yy, Type ttype, size_t uid);
-    //DiagramPoint(double xx, double yy); // type is NORMAL 
-    //DiagramPoint() : x(0.0), y(0.0), type(DIAG) {}
+    DiagramPoint(double xx, double yy, Type ttype);
     bool isDiagonal(void) const { return type == DIAG; }
     bool isNormal(void) const { return type == NORMAL; }
-    Point getOrdinaryPoint() const; // for diagonal points return the coords or projection
     double getRealX() const; // return the x-coord
     double getRealY() const; // return the y-coord
     friend std::ostream& operator<<(std::ostream& output, const DiagramPoint p);
@@ -84,50 +77,14 @@ struct DiagramPoint
         bool    operator()(const DiagramPoint& p1, const DiagramPoint& p2) const
         { return p1.type < p2.type || (p1.type == p2.type && (p1.x < p2.x || (p1.x == p2.x && p1.y < p2.y))); }
     };
-};
-
-struct PointHash {
-    size_t operator()(const Point& p) const{
-        return std::hash<double>()(p.x)^std::hash<double>()(p.y);
-    }
-};
-
-struct DiagramPointHash {
-    size_t operator()(const DiagramPoint& p) const{
-        //return std::hash<double>()(p.x)^std::hash<double>()(p.y)^std::hash<bool>()(p.type == DiagramPoint::NORMAL);
-        assert(p.id >= MIN_VALID_ID);
-        return std::hash<int>()(p.id);
-    }
+private:
+    double x, y;
 };
 
 double sqrDist(const Point& a, const Point& b);
 double dist(const Point& a, const Point& b);
 double distLInf(const DiagramPoint& a, const DiagramPoint& b);
 double distLp(const DiagramPoint& a, const DiagramPoint& b, const double p);
-
-typedef std::unordered_set<Point, PointHash> PointSet;
-
-class DiagramPointSet {
-public:
-    void insert(const DiagramPoint p);
-    void erase(const DiagramPoint& p, bool doCheck = true); // if doCheck, erasing non-existing elements causes assert
-    void erase(const std::unordered_set<DiagramPoint, DiagramPointHash>::const_iterator it);
-    size_t size() const;
-    void reserve(const size_t newSize);
-    void clear();
-    bool empty() const;
-    bool hasElement(const DiagramPoint& p) const;
-    bool operator==(const DiagramPointSet& Other) const;
-    std::unordered_set<DiagramPoint, DiagramPointHash>::iterator find(const DiagramPoint& p) { return points.find(p); };
-    std::unordered_set<DiagramPoint, DiagramPointHash>::const_iterator find(const DiagramPoint& p) const { return points.find(p); };
-    std::unordered_set<DiagramPoint, DiagramPointHash>::iterator begin() { return points.begin(); };
-    std::unordered_set<DiagramPoint, DiagramPointHash>::iterator end() { return points.end(); }
-    std::unordered_set<DiagramPoint, DiagramPointHash>::const_iterator cbegin() const { return points.cbegin(); }
-    std::unordered_set<DiagramPoint, DiagramPointHash>::const_iterator cend() const { return points.cend(); }
-    friend std::ostream& operator<<(std::ostream& output, const DiagramPointSet& ps);
-private:
-    std::unordered_set<DiagramPoint, DiagramPointHash> points;
-};
 
 template<typename DiagPointContainer>
 double getFurthestDistance3Approx(DiagPointContainer& A, DiagPointContainer& B)
@@ -149,5 +106,5 @@ double getFurthestDistance3Approx(DiagPointContainer& A, DiagPointContainer& B)
     return result;
 }
 
-
+} // end of namespace geom_ws
 #endif

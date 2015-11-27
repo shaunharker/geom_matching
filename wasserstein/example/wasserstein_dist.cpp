@@ -34,62 +34,45 @@ derivative works thereof, in binary and source code form.
 #include <limits>
 #include <random>
 
-#include "basic_defs.h"
 #include "wasserstein.h"
 
-bool readDiagramPointSets(const char* fnameA,
-                          const char* fnameB,
-                          DiagramPointSet& A,
-                          DiagramPointSet& B)
+// any container of pairs of doubles can be used,
+// we use vector in this example.
+
+typedef std::vector<std::pair<double, double>>  PairVector;
+
+// fill in result with points from file fname
+// return false if file can't be opened
+bool readDiagramPointSet(const char* fname, PairVector& result)
 {
-    std::ifstream fA(fnameA);
-    if (!fA.good()) {
-        std::cerr << "Cannot open file " << fnameA << std::endl;
+    result.clear();
+    std::ifstream f(fname);
+    if (!f.good()) {
+        std::cerr << "Cannot open file " << fname << std::endl;
         return false;
     }
-    std::ifstream fB(fnameB);
-    if (!fB.good()) {
-        std::cerr << "Cannot open file " << fnameB << std::endl;
-        return false;
+    double x, y;
+    while(f >> x >> y) {
+        result.push_back(std::make_pair(x,y));
     }
-    A.clear();
-    B.clear();
-    Point p;
-    size_t uniqueId {MIN_VALID_ID};
-    size_t projId;
-    while(fA >> p.x >> p.y) {
-        // normal point, its projection will be added next, so +1
-        projId = uniqueId+1;
-        DiagramPoint dpA {p.x, p.y, DiagramPoint::NORMAL, uniqueId++, projId};
-        // diagonal point, its parent has been added, so -1
-        projId = uniqueId-1;
-        DiagramPoint dpB {p.x, p.y, DiagramPoint::DIAG, uniqueId++, projId};
-        A.insert(dpA);
-        B.insert(dpB);
-    }
-    fA.close();
-    while(fB >> p.x >> p.y) {
-        // normal point, its projection will be added next, so +1
-        projId = uniqueId+1;
-        DiagramPoint dpB {p.x, p.y, DiagramPoint::NORMAL, uniqueId++, projId};
-        // diagonal point, its parent has been added, so -1
-        projId = uniqueId-1;
-        DiagramPoint dpA {p.x, p.y, DiagramPoint::DIAG, uniqueId++, projId};
-        B.insert(dpB);
-        A.insert(dpA);
-    }
-    fB.close();
+    f.close();
     return true;
 }
 
 int main(int argc, char* argv[])
 {
-    DiagramPointSet A, B;
+    PairVector diagramA, diagramB;
+
     if (argc < 3 ) {
         std::cerr << "Usage: " << argv[0] << " file1 file2 [wasserstein_degree] [relative_error] [internal norm]. By default power is 1.0, relative error is 0.01, internal norm is l_infinity." << std::endl;
         return 1;
     }
-    if (!readDiagramPointSets(argv[1], argv[2], A, B)) {
+
+    if (!readDiagramPointSet(argv[1], diagramA)) {
+        std::exit(1);
+    }
+
+    if (!readDiagramPointSet(argv[2], diagramB)) {
         std::exit(1);
     }
 
@@ -113,7 +96,7 @@ int main(int argc, char* argv[])
         std::exit(1);
     }
 
-    double res = wassersteinDist(A, B, wasserPower, delta, internal_p);
+    double res = geom_ws::wassersteinDist(diagramA, diagramB, wasserPower, delta, internal_p);
     std::cout << std::setprecision(15) << res << std::endl;
     return 0;
 }
