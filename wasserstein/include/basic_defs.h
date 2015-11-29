@@ -37,6 +37,11 @@ derivative works thereof, in binary and source code form.
 #include <string>
 #include <assert.h>
 
+#ifdef _WIN32
+#include <ciso646>
+#endif
+
+
 #include "def_debug.h"
 
 #define MIN_VALID_ID 10
