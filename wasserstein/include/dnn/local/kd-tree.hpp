@@ -101,7 +101,7 @@ dnn::KDTree<T>::OrderTree
 
             // Replace with a size condition instead?
             if (b < m - 1)  q.push(KDTreeNode(b,   m, next_i));
-            if (e > m + 2)  q.push(KDTreeNode(m+1, e, next_i));
+            if (e - m > 2)  q.push(KDTreeNode(m+1, e, next_i));
         }
     }
 
@@ -154,29 +154,13 @@ search(PointHandle q, ResultsFunctor& rf) const
         DistanceType diffToWasserPower = (diff > 0 ? 1.0 : -1.0) * pow(fabs(diff), wassersteinPower);
 
         size_t       lm   = m + 1 + (e - (m+1))/2 - tree_.begin();
-        DistanceType lw   = subtree_weights_[lm];
-        if (e > m + 1 && diffToWasserPower - lw >= -D)
+        if (e > m + 1 && diffToWasserPower - subtree_weights_[lm] >= -D) {
             nodes.push(KDTreeNode(m+1, e, i));
-        else if ( e > m + 1 ) {
-            //for(auto pit = m + 1; pit != e; ++pit) {
-                //if ( fabs( (*(*pit))[0] - 40.6318 ) < 0.0001 and fabs( (*(*pit))[1] - 40.6318) < 0.0001) {
-                    //std::cout << "WRONG! left" << std::endl;
-                //}
-            //}
-            //std::cout << " lw = " << lw << ", diff = " << diff << ", diff - lw = " << diff - lw << ", D = " << D << " ignore left subtree" << std::endl;
         }
 
         size_t       rm   = b + (m - b) / 2 - tree_.begin();
-        DistanceType rw   = subtree_weights_[rm];
-        if (b < m && diffToWasserPower + rw <= D)
+        if (b < m && diffToWasserPower + subtree_weights_[rm] <= D) {
             nodes.push(KDTreeNode(b,   m, i));
-        else if ( b < m ) {
-            //for(auto pit = b; pit != m; ++pit) {
-                //if ( fabs( (*(*pit))[0] - 40.6318 ) < 0.0001 and fabs( (*(*pit))[1] - 40.6318) < 0.0001) {
-                    //std::cout << "WRONG! right" << std::endl;
-                //}
-            //}
-            //std::cout << "rw = " << rw << ", diff = " << diff << ", diff + rw = " << diff + rw << ", D = " << D << " ignore right subtree" << std::endl;
         }
     }
     //std::cout << "exited kdtree::search" << std::endl;
