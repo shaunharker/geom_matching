@@ -43,8 +43,7 @@ To use from your code:
 
 #include "wasserstein.h"
 
-// All classes and functions are in geom_bt namespace
-// (including modified ANN's classes).
+// All classes and functions are in geom_ws namespace
 
 std::vector<std::pair<double, double>> diagram1, diagram2;
 // any container class that supports range-for loops will do.
