@@ -18,7 +18,9 @@ if(NOT WIN32)
     add_definitions(-std=c++11)
 endif(NOT WIN32)
 
-add_library(wasserstein ${CMAKE_CURRENT_SOURCE_DIR}/src/wasserstein.cpp ${CMAKE_CURRENT_SOURCE_DIR}/src/basic_defs.cpp)
+file(GLOB WS_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp)
+
+add_library(wasserstein ${WS_SOURCES})
 
 if (WIN32)
     GENERATE_EXPORT_HEADER(wasserstein
