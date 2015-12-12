@@ -93,6 +93,12 @@ double wassersteinDist(PairContainer& A, PairContainer& B, const double q, const
     return wassersteinDistVec(dgmA, dgmB, q, delta, _internal_p);
 }
 
+
+// fill in result with points from file fname
+// return false if file can't be opened
+// or error occurred while reading
+bool readDiagramPointSet(const char* fname, std::vector<std::pair<double, double>>& result);
+bool readDiagramPointSet(const std::string& fname, std::vector<std::pair<double, double>>& result);
  
 } // end of namespace geom_ws
 

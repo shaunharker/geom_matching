@@ -41,24 +41,6 @@ derivative works thereof, in binary and source code form.
 
 typedef std::vector<std::pair<double, double>>  PairVector;
 
-// fill in result with points from file fname
-// return false if file can't be opened
-bool readDiagramPointSet(const char* fname, PairVector& result)
-{
-    result.clear();
-    std::ifstream f(fname);
-    if (!f.good()) {
-        std::cerr << "Cannot open file " << fname << std::endl;
-        return false;
-    }
-    double x, y;
-    while(f >> x >> y) {
-        result.push_back(std::make_pair(x,y));
-    }
-    f.close();
-    return true;
-}
-
 int main(int argc, char* argv[])
 {
     PairVector diagramA, diagramB;
@@ -68,11 +50,11 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    if (!readDiagramPointSet(argv[1], diagramA)) {
+    if (!geom_ws::readDiagramPointSet(argv[1], diagramA)) {
         std::exit(1);
     }
 
-    if (!readDiagramPointSet(argv[2], diagramB)) {
+    if (!geom_ws::readDiagramPointSet(argv[2], diagramB)) {
         std::exit(1);
     }
 

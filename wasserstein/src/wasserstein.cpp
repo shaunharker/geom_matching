@@ -390,6 +390,51 @@ void AuctionRunner::printMatching(void)
 //#endif
 }
 
+bool readDiagramPointSet(const std::string& fname, std::vector<std::pair<double, double>>& result)
+{
+    return readDiagramPointSet(fname.c_str(), result);
+}
+
+bool readDiagramPointSet(const char* fname, std::vector<std::pair<double, double>>& result)
+{
+    size_t lineNumber { 0 };
+    result.clear();
+    std::ifstream f(fname);
+    if (!f.good()) {
+        std::cerr << "Cannot open file " << fname << std::endl;
+        return false;
+    }
+    std::string line;
+    while(std::getline(f, line)) {
+        lineNumber++;
+        // process comments: remove everything after hash
+        auto hashPos = line.find_first_of("#", 0);
+        if( std::string::npos != hashPos) {
+            line = std::string(line.begin(), line.begin() + hashPos);
+        }
+        if (line.empty()) {
+            continue;
+        }
+         // trim whitespaces 
+        auto whiteSpaceFront = std::find_if_not(line.begin(),line.end(),isspace);
+        auto whiteSpaceBack = std::find_if_not(line.rbegin(),line.rend(),isspace).base();
+        if (whiteSpaceBack <= whiteSpaceFront) {
+            // line consists of spaces only - move to the next line
+            continue;
+        }
+        line = std::string(whiteSpaceFront,whiteSpaceBack);
+        double x, y;
+        std::istringstream iss(line);
+        if (not(iss >> x >> y)) {
+            std::cerr << "Error in file " << fname << ", line number " << lineNumber << ": cannot parse \"" << line << "\"" << std::endl;
+            return false;
+        }
+        result.push_back(std::make_pair(x,y));
+    }
+    f.close();
+    return true;
+}
+
 
 
 } // end of namespace geom_ws
