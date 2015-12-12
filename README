@@ -1,5 +1,9 @@
-This is a program for computing Wasserstein distances between persistence diagrams
-using the geometric version of auction algorithm.
+This is a program for computing Wasserstein distances between persistence 
+diagrams using the geometric version of auction algorithm.
+
+Accompanying paper: M. Kerber, D. Morozov, A. Nigmetov. Geometry Helps To Compare
+Persistence Diagrams (ALENEX 2016, http://www.geometrie.tugraz.at/nigmetov/geom_dist.pdf)
+Bug reports can be sent to "nigmetov EMAIL SIGN tugraz DOT at".
 
 Wasserstein distance $W_{q, p}(X, Y)$ between two persistent diagrams is
 the minimum over all perfect matchings between $X$ and $Y$ ( $y(x)$ is the point of $Y$
@@ -33,11 +37,13 @@ relative_error must be positive,
 internal_p must be in $[1.0, \infinity]$ (to explicitly set internal_p to $\infinity$, supply inf).By default wasserstein degree is 1.0, relative error is 0.01, internal norm is l_infinity.
 
 file1 and file2 must contain persistence diagrams in plain text format 
-(no headers, no comments, one point per line):
+(one point per line, empty lines are ignored, comments can be made with #):
 
-x_1 y_1
+# this is how your input can look like
+x_1 y_1 # two real numbers per line
 ...
-x_n y_n
+# empty lines or comments are ignored
+x_n y_n 
 
 To use from your code:
 
@@ -52,9 +58,14 @@ std::vector<std::pair<double, double>> diagram1, diagram2;
 // second component = y-coordinate.
 // ...
 // load your diagrams into diagram1, diagram2 (off-diagonal points).
+// You can use function readDiagramPointSet:
+geom_ws::readDiagramPointSet("diagram1.txt", diagram1);
+geom_ws::readDiagramPointSet("diagram2.txt", diagram1);
 // ...
-// to get exact distance:
-double wsDist = geom_ws::wassersteinDist(diagram1, diagram2);
+// to get the distance:
+double wsDist = geom_ws::wassersteinDist(diagram1, diagram2, q, delta, p);
+// q is wasserstein degree, delta is relative error,
+// p is the internal norm in Wasserstein distance, defaults to infinity
 
 Necessary projections (diagonal points) will be added in the wassersteinDist
 function.
