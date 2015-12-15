@@ -42,10 +42,10 @@ namespace geom_ws {
 // AuctionOracleRestricted is the bruteforce oracle (the slowest one).
 
 //using AuctionOracle = AuctionOracleKDTree;
-//using AuctionOracle = AuctionOracleKDTreeRestricted;
+using AuctionOracle = AuctionOracleKDTreeRestricted;
 //using AuctionOracle = AuctionOracleLazyHeap;
 //using AuctionOracle = AuctionOracleLazyHeapRestricted;
-using AuctionOracle = AuctionOracleRestricted;
+//using AuctionOracle = AuctionOracleRestricted;
 
 
 
