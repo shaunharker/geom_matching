@@ -1218,6 +1218,16 @@ IdxValPair AuctionOracleKDTreeRestricted::getOptimalBid(IdxType bidderIdx)
         bidderDnn[0] = bidder.getRealX();
         bidderDnn[1] = bidder.getRealY();
         auto twoBestItems = kdtree->findK(bidderDnn, 2);
+        
+        // DEBUG BEGIN -- ADDED TO DEMONSTRATE MEMORY ERROR ISSUE -- SHAUN HARKER 2015-12-17
+        if ( twoBestItems . size () < 2 ) {
+          std::cout << "auction_oracle.cpp line " << __LINE__ << "\n";
+          std::cout << "  twoBestItems.size() == " << twoBestItems.size() << "\n";
+          std::cout << "  Aborting since this is not at least 2. Subsequent code would cause memory errors.\n";
+          abort ();
+        }
+        // DEBUG END -- SHAUN HARKER 2015-12-17
+
         //std::cout << "twoBestItems for all: " << twoBestItems[0].d << " " << twoBestItems[1].d << std::endl;
         size_t bestNormalItemIdx { twoBestItems[0].p->id() };
         double bestNormalItemValue { twoBestItems[0].d };

@@ -84,7 +84,7 @@ to compute the distance between two diagrams in txt files.
 
 On Linux/Mac:
 
-mdkir build
+mkdir build
 cd build
 cmake ..
 make
